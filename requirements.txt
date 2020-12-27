@@ -1,0 +1,5 @@
+pandas_datareader==0.9.0
+pandas==1.1.5
+scipy
+click
+tabulate

@@ -1,0 +1,11 @@
+{
+    "minimum_momentum": 60,
+    "portfolio_size": 15,
+    "portfolio": 10000,
+    "trend_filter_window_far": 120,
+    "trend_filter_window_near": 60,
+    "momentum_window_near": 60,
+    "momentum_window_far": 120,
+    "exclude_days": 5,
+    "volatility_window": 20
+}

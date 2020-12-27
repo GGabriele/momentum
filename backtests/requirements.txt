@@ -1,0 +1,4 @@
+pyfolio
+matplotlib
+pandas==0.22.0
+html5lib
