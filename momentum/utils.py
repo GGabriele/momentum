@@ -220,7 +220,25 @@ def rebalance_portfolio(universe, ranking_table, config, data):
     ignore_cols = ["TOTAL", "CASH", "PORTFOLIO"]
     sell = []
     zeros = []
-    liquidity_from_sells = 0
+    # cash flow : add new cash to your portfolio or withdraw 
+    print ("Do you want to add cash or withdraw money (y/n)?")
+    answer = input()
+    if answer == "y" :
+        print ("How much? Use negative number if you want to withdraw")
+        new_cash = float(input())
+        if new_cash > 0:
+            print ("You added " + str(new_cash) + " $.")
+            liquidity_from_sells = 0 + float(new_cash)
+        elif new_cash < 0:
+            print ("you have withdrawn " + str(new_cash) + " $.")
+            liquidity_from_sells = 0 + float(new_cash)
+        else:
+            print ("No new equity or withdraw")
+            liquidity_from_sells = 0 
+    else:
+        print ("No new equity or withdraw")
+        liquidity_from_sells = 0 
+    
 
     def sell_security(security, amount):
         nonlocal liquidity_from_sells
