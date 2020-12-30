@@ -14,13 +14,16 @@ MOMENTUM_DIR = f"{HOME_DIR}/.momentum"
 def slope(ts):
     """
     Input: Price time series.
-    Output: Annualized exponential regression slope, multipl
+    Output: Annualized exponential regression slope, weighted on positive returns percentile
     """
     x = np.arange(len(ts))
     log_ts = np.log(ts)
     slope, _, r_value, _, _ = stats.linregress(x, log_ts)
     annualized_slope = (np.power(np.exp(slope), 252) - 1) * 100
-    return annualized_slope * (r_value ** 2)
+    score = annualized_slope * (r_value ** 2)
+    daily_returns = ts / ts.shift(1) - 1
+    positive_returns = ((daily_returns > 0).sum() / len(daily_returns)) * 100
+    return score * positive_returns
 
 
 def volatility(ts, window):
@@ -232,7 +235,15 @@ def rebalance_portfolio(universe, ranking_table, config, data):
             zeros.append(security)
 
     kept_positions = [k for k in existing_portfolio.index if k not in ignore_cols]
-    # Sell positions no longer wanted.
+    """
+    Sell Logic
+
+    First we check if any existing position should be sold.
+    * Sell if stock is no longer part of index.
+    * Sell if stock has too low momentum value.
+    * Sell if stock is lower 100MA
+    * Sell if stock not in top 100 stocks
+    """
     for security, values in existing_portfolio.iterrows():
         if security in ignore_cols:
             continue
@@ -246,6 +257,7 @@ def rebalance_portfolio(universe, ranking_table, config, data):
         elif security not in ranking_table[:50]:
             sell_security(security, values.amount)
         else:
+            # Hold it. Update portfolio with current price of the stock.
             existing_portfolio.loc[security]["price"] = data[security][-1]
             existing_portfolio.loc[security]["value"] = (
                 values.amount * data[security][-1]
