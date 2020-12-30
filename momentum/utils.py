@@ -9,6 +9,8 @@ import click
 
 HOME_DIR = str(Path.home())
 MOMENTUM_DIR = f"{HOME_DIR}/.momentum"
+PORTFOLIOS_DIR = f"{MOMENTUM_DIR}/portfolios"
+DATA_DIR = f"{MOMENTUM_DIR}/data"
 
 
 def slope(ts):
@@ -65,10 +67,10 @@ def collect_history(start, end, symbols):
     """Collect and store historical data."""
     data = retrieve_upstream(start, end, symbols)
     data = data.loc[:, "Close"]
-    Path(MOMENTUM_DIR).mkdir(parents=True, exist_ok=True)
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
     start = start.strftime("%Y%m%d")
     end = end.strftime("%Y%m%d")
-    filename = f"{MOMENTUM_DIR}/sp500-{start}-{end}.data"
+    filename = f"{DATA_DIR}/sp500-{start}-{end}.data"
     data.to_pickle(filename)
 
 
@@ -123,7 +125,9 @@ def can_we_trade(config, index_history):
     return bull_market
 
 
-def compute_portfolio(final_buy_list, vola_target_weights, config, liquidity, data):
+def compute_portfolio(
+    name, final_buy_list, vola_target_weights, config, liquidity, data
+):
     if not can_we_trade(config, data["SPY"]):
         click.echo(
             click.style(
@@ -170,10 +174,12 @@ def compute_portfolio(final_buy_list, vola_target_weights, config, liquidity, da
         portfolio.loc["TOTAL"].value + portfolio.loc["CASH"].value
     )
     # Store portfolio
-    portfolio.to_pickle(f"{MOMENTUM_DIR}/portfolio.last", protocol=4)
+    Path(PORTFOLIOS_DIR).mkdir(parents=True, exist_ok=True)
+    portfolio.to_pickle(f"{PORTFOLIOS_DIR}/{name}.pickle", protocol=4)
+    portfolio.to_json(f"{PORTFOLIOS_DIR}/{name}.json", indent=4)
     print()
     click.echo(click.style("******* NEW PORTFOLIO *******", fg="green"))
-    print(portfolio.to_dense())
+    print(portfolio.to_markdown())
     print()
 
 
@@ -184,7 +190,7 @@ def calculate_averages(data):
     df.loc["TODAY", "value"] = data[-1]
     print()
     click.echo(click.style("******* SP500 SMAs *******", fg="green"))
-    print(df.to_dense())
+    print(df.to_markdown())
     print()
 
 
@@ -201,7 +207,7 @@ def sell_report(sell, data, portfolio):
 
     print()
     click.echo(click.style("******* SELL *******", fg="red"))
-    print(to_sell.to_dense())
+    print(to_sell.to_markdown())
     print()
 
 
@@ -214,12 +220,12 @@ def remaining_report(portfolio, cash, liquidity):
     portfolio_value = new_portfolio.loc["TOTAL"].value + liquidity + cash
     new_portfolio.loc["PORTFOLIO", "value"] = portfolio_value
     click.echo(click.style("******* REMAINING *******", fg="yellow"))
-    print(new_portfolio.to_dense())
+    print(new_portfolio.to_markdown())
     print()
 
 
-def rebalance_portfolio(universe, ranking_table, config, data):
-    existing_portfolio = pd.read_pickle(f"{MOMENTUM_DIR}/portfolio.last")
+def rebalance_portfolio(name, universe, ranking_table, config, data):
+    existing_portfolio = pd.read_json(f"{PORTFOLIOS_DIR}/{name}.json")
     ignore_cols = ["TOTAL", "CASH", "PORTFOLIO"]
     sell = []
     zeros = []
@@ -279,5 +285,5 @@ def rebalance_portfolio(universe, ranking_table, config, data):
     )
     vola_target_weights = get_weighted_table(data, final_buy_list, config)
     compute_portfolio(
-        final_buy_list, vola_target_weights, config, portfolio_value, data
+        name, final_buy_list, vola_target_weights, config, portfolio_value, data
     )
