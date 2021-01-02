@@ -15,15 +15,10 @@ from .utils import (
 
 @click.command()
 @click.pass_context
-@click.option("--start", default="2020-6-1", help="Start date in Y-M-D format.")
-@click.option(
-    "--end",
-    default=datetime.today().date(),
-    help="End date in Y-M-D format.",
-)
+@click.argument("name")
 @click.option(
     "--execution-time",
-    default=datetime.today().date(),
+    default=str(datetime.today().date()),
     help="Time of portfolio calculation.",
 )
 @click.option("--data-file", help="Pickle data file with historical records.")
@@ -32,7 +27,7 @@ from .utils import (
     default=False,
     help="Whether or not this is a rebalance from last portfolio.",
 )
-def portfolio(ctx, start, end, data_file, execution_time, rebalance, **kwargs):
+def portfolio(ctx, name, data_file, execution_time, rebalance, **kwargs):
     """Generate a new portfolio or rebalance an existing one."""
     config = ctx.obj["config"]
     symbols = get_sp500_symbols()
@@ -45,9 +40,7 @@ def portfolio(ctx, start, end, data_file, execution_time, rebalance, **kwargs):
         + config["exclude_days"]
     )
 
-    start = datetime.strptime(start, "%Y-%m-%d")
-    end = datetime.strptime(str(end), "%Y-%m-%d")
-    execution_time = datetime.strptime(str(execution_time), "%Y-%m-%d")
+    execution_time = datetime.strptime(execution_time, "%Y-%m-%d")
     data = get_historical_data_from_file(data_file)
     data = data.truncate(after=execution_time.date())[-hist_window:]
     ranking_table = get_ranking_table(data, config)
@@ -56,10 +49,10 @@ def portfolio(ctx, start, end, data_file, execution_time, rebalance, **kwargs):
     vola_target_weights = get_weighted_table(data, buy_list, config)
 
     if rebalance:
-        rebalance_portfolio(symbols, ranking_table, config, data)
+        rebalance_portfolio(name, symbols, ranking_table, config, data)
     else:
         compute_portfolio(
-            final_buy_list, vola_target_weights, config, config["portfolio"], data
+            name, final_buy_list, vola_target_weights, config, config["portfolio"], data
         )
 
 

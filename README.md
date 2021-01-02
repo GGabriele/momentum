@@ -15,6 +15,12 @@ This repository is based on a momentum strategy described into the books [Stock 
 
 This repo tries to implement this strategy, with few modifications.
 
+### Disclaimer
+
+This tool is for educational purposes only. No tool can replace financial market knowedge and you should USE THIS AT YOUT OWN RISK.
+
+THE AUTHORS ASSUME NO RESPONSIBILITY FOR YOUR TRADING RESULTS.
+
 ### Install
 
 Create a virtual environment using `conda`
