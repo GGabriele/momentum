@@ -175,7 +175,6 @@ def compute_portfolio(
     )
     # Store portfolio
     Path(PORTFOLIOS_DIR).mkdir(parents=True, exist_ok=True)
-    portfolio.to_pickle(f"{PORTFOLIOS_DIR}/{name}.pickle", protocol=4)
     portfolio.to_json(f"{PORTFOLIOS_DIR}/{name}.json", indent=4)
     print()
     click.echo(click.style("******* NEW PORTFOLIO *******", fg="green"))
