@@ -78,7 +78,7 @@ def get_historical_data_from_file(filename):
     """Get historical data from file."""
     try:
         return pd.read_pickle(filename)
-    except IOError:
+    except ValueError:
         msg = f"File {filename} not found, you may need to re-collect some data"
         click.echo(click.style(f"{msg}", fg="red"))
 
@@ -126,7 +126,7 @@ def can_we_trade(config, index_history):
 
 
 def compute_portfolio(
-    name, final_buy_list, vola_target_weights, config, liquidity, data
+    name, final_buy_list, vola_target_weights, config, liquidity, data, check
 ):
     if not can_we_trade(config, data["SPY"]):
         click.echo(
@@ -149,8 +149,8 @@ def compute_portfolio(
     )
     for security in final_buy_list.keys():
         weight = vola_target_weights[security]
-        security_amount = int(weight * liquidity)
-        number_of_shares = int(security_amount / data[security][-1])
+        security_amount = int(round(weight * liquidity))
+        number_of_shares = int(round(security_amount / data[security][-1]))
         real_weight = (number_of_shares * data[security][-1]) / liquidity
         portfolio.loc[security, "price"] = data[security][-1]
         portfolio.loc[security, "value"] = data[security][-1] * number_of_shares
@@ -175,7 +175,8 @@ def compute_portfolio(
     )
     # Store portfolio
     Path(PORTFOLIOS_DIR).mkdir(parents=True, exist_ok=True)
-    portfolio.to_json(f"{PORTFOLIOS_DIR}/{name}.json", indent=4)
+    if not check:
+        portfolio.to_json(f"{PORTFOLIOS_DIR}/{name}.json", indent=4)
     print()
     click.echo(click.style("******* NEW PORTFOLIO *******", fg="green"))
     print(portfolio.to_markdown())
@@ -223,7 +224,7 @@ def remaining_report(portfolio, cash, liquidity):
     print()
 
 
-def rebalance_portfolio(name, universe, ranking_table, config, data):
+def rebalance_portfolio(name, universe, ranking_table, config, data, check):
     existing_portfolio = pd.read_json(f"{PORTFOLIOS_DIR}/{name}.json")
     ignore_cols = ["TOTAL", "CASH", "PORTFOLIO"]
     sell = []
@@ -284,5 +285,5 @@ def rebalance_portfolio(name, universe, ranking_table, config, data):
     )
     vola_target_weights = get_weighted_table(data, final_buy_list, config)
     compute_portfolio(
-        name, final_buy_list, vola_target_weights, config, portfolio_value, data
+        name, final_buy_list, vola_target_weights, config, portfolio_value, data, check
     )

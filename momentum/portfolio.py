@@ -27,7 +27,12 @@ from .utils import (
     default=False,
     help="Whether or not this is a rebalance from last portfolio.",
 )
-def portfolio(ctx, name, data_file, execution_time, rebalance, **kwargs):
+@click.option(
+    "--check/--no-check",
+    default=False,
+    help="If set, the calculated portfolio will not be stored.",
+)
+def portfolio(ctx, name, data_file, execution_time, rebalance, check, **kwargs):
     """Generate a new portfolio or rebalance an existing one."""
     config = ctx.obj["config"]
     symbols = get_sp500_symbols()
@@ -47,12 +52,11 @@ def portfolio(ctx, name, data_file, execution_time, rebalance, **kwargs):
     buy_list = ranking_table[: config["portfolio_size"]]
     final_buy_list = buy_list[buy_list > config["minimum_momentum"]]
     vola_target_weights = get_weighted_table(data, buy_list, config)
-
     if rebalance:
-        rebalance_portfolio(name, symbols, ranking_table, config, data)
+        rebalance_portfolio(name, symbols, ranking_table, config, data, check)
     else:
         compute_portfolio(
-            name, final_buy_list, vola_target_weights, config, config["portfolio"], data
+            name, final_buy_list, vola_target_weights, config, config["portfolio"], data, check
         )
 
 
