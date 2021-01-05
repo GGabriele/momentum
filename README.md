@@ -113,9 +113,11 @@ Parameters:
 
 If no `--data-file` is provided, the script will pull historical data for the `SPY` index and its components and then it will store it into the `$HOME/.momentum` directory.
 
+Multiple portfolios are supported, so a name parameter must be passed.
+
 ```
 $ momentum portfolio --help
-Usage: momentum portfolio [OPTIONS]
+Usage: momentum portfolio [OPTIONS] NAME
 
   Generate a new portfolio or rebalance an existing one.
 
@@ -125,11 +127,14 @@ Options:
   --rebalance / --no-rebalance  Whether or not this is a rebalance from last
                                 portfolio.
 
+  --check / --no-check          If set, the calculated portfolio will not be
+                                stored.
+
   --help                        Show this message and exit.
 ```
 
 ```
-$ momentum portfolio --data-file ~/.momentum/sp500-20190101-20201226.data
+$ momentum portfolio test --data-file ~/.momentum/sp500-20190101-20201226.data
 
 ******* NEW PORTFOLIO *******
 |           |   price |    value |   amount |   proposed weight |   real weight |   weight delta |   add-on increase |
@@ -154,12 +159,12 @@ $ momentum portfolio --data-file ~/.momentum/sp500-20190101-20201226.data
 | PORTFOLIO |  nan    | 10000    |      nan |         nan       |      nan      |     nan        |          nan      |
 ```
 
-This will create a `$HOME/.momentum/portfolio.last` file.
+This will create a `$HOME/.momentum/portfolios/test.json` file.
 
 If the `--execution-time` parameter is provided, the portfolio will be built based on that date's market status.
 
 ```
-$ momentum portfolio --data-file ~/.momentum/sp500-20190101-20201226.data --execution-time 2020-7-1
+$ momentum portfolio test --data-file ~/.momentum/sp500-20190101-20201226.data --execution-time 2020-7-1
 
 ******* NEW PORTFOLIO *******
 |           |   price |     value |   amount |   proposed weight |   real weight |   weight delta |   add-on increase |
@@ -187,7 +192,7 @@ $ momentum portfolio --data-file ~/.momentum/sp500-20190101-20201226.data --exec
 If the `--rebalance` parameter is provided, the existing portfolio will be restored (stored in the `$HOME/.momentum` directory) and it will be adjusted based on the new market status.
 
 ```
-$ momentum portfolio --data-file ~/.momentum/sp500-20190101-20201226.data --execution-time 2020-8-3 --rebalance
+$ momentum portfolio test --data-file ~/.momentum/sp500-20190101-20201226.data --execution-time 2020-8-3 --rebalance
 
 ******* SELL *******
 |       |   price |   value |   amount |

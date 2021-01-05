@@ -149,8 +149,8 @@ def compute_portfolio(
     )
     for security in final_buy_list.keys():
         weight = vola_target_weights[security]
-        security_amount = int(round(weight * liquidity))
-        number_of_shares = int(round(security_amount / data[security][-1]))
+        security_amount = int(weight * liquidity)
+        number_of_shares = int(security_amount / data[security][-1])
         real_weight = (number_of_shares * data[security][-1]) / liquidity
         portfolio.loc[security, "price"] = data[security][-1]
         portfolio.loc[security, "value"] = data[security][-1] * number_of_shares
