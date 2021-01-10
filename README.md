@@ -134,7 +134,7 @@ Options:
 ```
 
 ```
-$ momentum portfolio test --data-file ~/.momentum/sp500-20190101-20201226.data
+$ momentum portfolio test --data-file ~/.momentum/data/sp500-20190101-20201226.data
 
 ******* NEW PORTFOLIO *******
 |           |   price |    value |   amount |   proposed weight |   real weight |   weight delta |   add-on increase |
@@ -164,7 +164,7 @@ This will create a `$HOME/.momentum/portfolios/test.json` file.
 If the `--execution-time` parameter is provided, the portfolio will be built based on that date's market status.
 
 ```
-$ momentum portfolio test --data-file ~/.momentum/sp500-20190101-20201226.data --execution-time 2020-7-1
+$ momentum portfolio test --data-file ~/.momentum/data/sp500-20190101-20201226.data --execution-time 2020-7-1
 
 ******* NEW PORTFOLIO *******
 |           |   price |     value |   amount |   proposed weight |   real weight |   weight delta |   add-on increase |
@@ -192,7 +192,7 @@ $ momentum portfolio test --data-file ~/.momentum/sp500-20190101-20201226.data -
 If the `--rebalance` parameter is provided, the existing portfolio will be restored (stored in the `$HOME/.momentum` directory) and it will be adjusted based on the new market status.
 
 ```
-$ momentum portfolio test --data-file ~/.momentum/sp500-20190101-20201226.data --execution-time 2020-8-3 --rebalance
+$ momentum portfolio test --data-file ~/.momentum/data/sp500-20190101-20201226.data --execution-time 2020-8-3 --rebalance
 
 ******* SELL *******
 |       |   price |   value |   amount |
