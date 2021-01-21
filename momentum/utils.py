@@ -253,7 +253,7 @@ def rebalance_portfolio(name, universe, ranking_table, config, data, check):
     for security, values in existing_portfolio.iterrows():
         if security in ignore_cols:
             continue
-        sec_history = data[security][:100]
+        sec_history = data[security][-100:]
         if security not in universe:
             sell_security(security, values.amount)
         elif ranking_table[security] < config["minimum_momentum"]:
