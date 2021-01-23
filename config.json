@@ -7,5 +7,11 @@
     "momentum_window_near": 60,
     "momentum_window_far": 120,
     "exclude_days": 5,
-    "volatility_window": 20
+    "volatility_window": 20,
+    "exclude_symbols": [
+        "DVN",
+        "OXY",
+        "MRO",
+        "DISCK"
+    ]
 }

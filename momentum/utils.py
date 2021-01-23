@@ -51,12 +51,12 @@ def inv_vola_calc(ts, window):
     return 1 / stddev.iloc[-1]
 
 
-def get_sp500_symbols():
+def get_sp500_symbols(exclude):
     """Get SP500 components from wikipedia."""
     sp500_table = pd.read_html(
         "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", header=0
     )[0]
-    return list(sp500_table.loc[:, "Symbol"])
+    return [s for s in list(sp500_table.loc[:, "Symbol"]) if s not in exclude]
 
 
 def retrieve_upstream(start, end, symbols):
@@ -224,7 +224,7 @@ def remaining_report(portfolio, cash, liquidity):
     print()
 
 
-def rebalance_portfolio(name, universe, ranking_table, config, data, check):
+def rebalance_portfolio(name, universe, exclude, ranking_table, config, data, check):
     existing_portfolio = pd.read_json(f"{PORTFOLIOS_DIR}/{name}.json")
     ignore_cols = ["TOTAL", "CASH", "PORTFOLIO"]
     sell = []
@@ -254,7 +254,9 @@ def rebalance_portfolio(name, universe, ranking_table, config, data, check):
         if security in ignore_cols:
             continue
         sec_history = data[security][-100:]
-        if security not in universe:
+        if security in exclude:
+            sell_security(security, values.amount)
+        elif security not in universe:
             sell_security(security, values.amount)
         elif ranking_table[security] < config["minimum_momentum"]:
             sell_security(security, values.amount)
@@ -272,6 +274,9 @@ def rebalance_portfolio(name, universe, ranking_table, config, data, check):
     sell_report(sell, data, existing_portfolio)
     cash = existing_portfolio.loc["CASH"].value
     new_portfolio = existing_portfolio.drop(sell).drop(zeros).drop(ignore_cols)
+    for ex in exclude:
+        if ex in ranking_table:
+            ranking_table = ranking_table.drop(ex)
     portfolio_value = cash + liquidity_from_sells + new_portfolio["value"].sum()
     remaining_report(new_portfolio, cash, liquidity_from_sells)
 

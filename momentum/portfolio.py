@@ -35,7 +35,8 @@ from .utils import (
 def portfolio(ctx, name, data_file, execution_time, rebalance, check, **kwargs):
     """Generate a new portfolio or rebalance an existing one."""
     config = ctx.obj["config"]
-    symbols = get_sp500_symbols()
+    exclude = config["exclude_symbols"]
+    symbols = get_sp500_symbols(exclude)
     # Add SPY ticker to the symbols to include it into history.
     symbols.append("SPY")
 
@@ -44,7 +45,6 @@ def portfolio(ctx, name, data_file, execution_time, rebalance, check, **kwargs):
         max(config["momentum_window_near"], config["momentum_window_far"])
         + config["exclude_days"]
     )
-
     execution_time = datetime.strptime(execution_time, "%Y-%m-%d")
     data = get_historical_data_from_file(data_file)
     data = data.truncate(after=execution_time.date())[-hist_window:]
@@ -53,7 +53,7 @@ def portfolio(ctx, name, data_file, execution_time, rebalance, check, **kwargs):
     final_buy_list = buy_list[buy_list > config["minimum_momentum"]]
     vola_target_weights = get_weighted_table(data, buy_list, config)
     if rebalance:
-        rebalance_portfolio(name, symbols, ranking_table, config, data, check)
+        rebalance_portfolio(name, symbols, exclude, ranking_table, config, data, check)
     else:
         compute_portfolio(
             name, final_buy_list, vola_target_weights, config, config["portfolio"], data, check
