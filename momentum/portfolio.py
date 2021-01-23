@@ -36,7 +36,8 @@ def portfolio(ctx, name, data_file, execution_time, rebalance, check, **kwargs):
     """Generate a new portfolio or rebalance an existing one."""
     config = ctx.obj["config"]
     exclude = config["exclude_symbols"]
-    symbols = get_sp500_symbols(exclude)
+    include = config["include_symbols"]
+    symbols = get_sp500_symbols(exclude, include=include)
     # Add SPY ticker to the symbols to include it into history.
     symbols.append("SPY")
 

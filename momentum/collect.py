@@ -15,8 +15,10 @@ from .utils import collect_history, get_sp500_symbols
 )
 def collect(ctx, start, end, **kwargs):
     """Collect and store historical SP500 data."""
-    exclude = []
-    symbols = get_sp500_symbols(exclude)
+    config = ctx.obj["config"]
+    exclude = config["exclude_symbols"]
+    include = config["include_symbols"]
+    symbols = get_sp500_symbols(exclude, include=include)
     # Add SPY ticker to the symbols to include it into history.
     symbols.append("SPY")
     start = datetime.strptime(start, "%Y-%m-%d")

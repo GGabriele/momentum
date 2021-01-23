@@ -51,12 +51,15 @@ def inv_vola_calc(ts, window):
     return 1 / stddev.iloc[-1]
 
 
-def get_sp500_symbols(exclude):
+def get_sp500_symbols(exclude, include=None):
     """Get SP500 components from wikipedia."""
     sp500_table = pd.read_html(
         "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", header=0
     )[0]
-    return [s for s in list(sp500_table.loc[:, "Symbol"]) if s not in exclude]
+    symbols = [s for s in list(sp500_table.loc[:, "Symbol"]) if s not in exclude]
+    if include:
+        symbols.extend(include)
+    return symbols
 
 
 def retrieve_upstream(start, end, symbols):
