@@ -10,6 +10,7 @@ from .utils import (
     can_we_trade,
     compute_portfolio,
     rebalance_portfolio,
+    check_volatility,
 )
 
 
@@ -50,11 +51,23 @@ def portfolio(ctx, name, data_file, execution_time, rebalance, check, **kwargs):
     data = get_historical_data_from_file(data_file)
     data = data.truncate(after=execution_time.date())[-hist_window:]
     ranking_table = get_ranking_table(data, config)
+
+    # Check volatility
+    is_too_volatile = data.apply(check_volatility)
+    too_volatile = is_too_volatile[is_too_volatile == True]
+    ranking_table = ranking_table[is_too_volatile[is_too_volatile == False].index]
+    ranking_table = ranking_table.sort_values(ascending=False)
+
+    # Remove unwanted stocks.
+    for ex in exclude:
+        if ex in ranking_table:
+            ranking_table = ranking_table.drop(ex)
+
     buy_list = ranking_table[: config["portfolio_size"]]
     final_buy_list = buy_list[buy_list > config["minimum_momentum"]]
     vola_target_weights = get_weighted_table(data, buy_list, config)
     if rebalance:
-        rebalance_portfolio(name, symbols, exclude, ranking_table, config, data, check)
+        rebalance_portfolio(name, symbols, exclude, ranking_table, config, data, check, too_volatile)
     else:
         compute_portfolio(
             name, final_buy_list, vola_target_weights, config, config["portfolio"], data, check

@@ -50,6 +50,15 @@ def inv_vola_calc(ts, window):
     )
     return 1 / stddev.iloc[-1]
 
+def check_volatility(ts):
+    """
+    Consider stocks with an absolute movement of 15% in the
+    last 30 days to be too volatile.
+    """
+    vol = ts / ts.shift(1) -1
+    vol = vol[-30:]
+    return (not vol[vol > 0.15].empty and not vol[vol < -0.15].empty)
+
 
 def get_sp500_symbols(exclude, include=None):
     """Get SP500 components from wikipedia."""
@@ -227,7 +236,7 @@ def remaining_report(portfolio, cash, liquidity):
     print()
 
 
-def rebalance_portfolio(name, universe, exclude, ranking_table, config, data, check):
+def rebalance_portfolio(name, universe, exclude, ranking_table, config, data, check, too_volatile):
     existing_portfolio = pd.read_json(f"{PORTFOLIOS_DIR}/{name}.json")
     ignore_cols = ["TOTAL", "CASH", "PORTFOLIO"]
     sell = []
@@ -260,6 +269,8 @@ def rebalance_portfolio(name, universe, exclude, ranking_table, config, data, ch
         if security in exclude:
             sell_security(security, values.amount)
         elif security not in universe:
+            sell_security(security, values.amount)
+        elif security in too_volatile:
             sell_security(security, values.amount)
         elif ranking_table[security] < config["minimum_momentum"]:
             sell_security(security, values.amount)
