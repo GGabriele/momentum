@@ -9,18 +9,23 @@ import click
 
 HOME_DIR = str(Path.home())
 MOMENTUM_DIR = f"{HOME_DIR}/.momentum"
+PORTFOLIOS_DIR = f"{MOMENTUM_DIR}/portfolios"
+DATA_DIR = f"{MOMENTUM_DIR}/data"
 
 
 def slope(ts):
     """
     Input: Price time series.
-    Output: Annualized exponential regression slope, multipl
+    Output: Annualized exponential regression slope, weighted on positive returns percentile
     """
     x = np.arange(len(ts))
     log_ts = np.log(ts)
     slope, _, r_value, _, _ = stats.linregress(x, log_ts)
     annualized_slope = (np.power(np.exp(slope), 252) - 1) * 100
-    return annualized_slope * (r_value ** 2)
+    score = annualized_slope * (r_value ** 2)
+    daily_returns = ts / ts.shift(1) - 1
+    positive_returns = ((daily_returns > 0).sum() / len(daily_returns)) * 100
+    return score * positive_returns
 
 
 def volatility(ts, window):
@@ -45,13 +50,25 @@ def inv_vola_calc(ts, window):
     )
     return 1 / stddev.iloc[-1]
 
+def check_volatility(ts):
+    """
+    Consider stocks with an absolute movement of 15% in the
+    last 30 days to be too volatile.
+    """
+    vol = ts / ts.shift(1) -1
+    vol = vol[-30:]
+    return (not vol[vol > 0.15].empty and not vol[vol < -0.15].empty)
 
-def get_sp500_symbols():
+
+def get_sp500_symbols(exclude, include=None):
     """Get SP500 components from wikipedia."""
     sp500_table = pd.read_html(
         "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", header=0
     )[0]
-    return list(sp500_table.loc[:, "Symbol"])
+    symbols = [s for s in list(sp500_table.loc[:, "Symbol"]) if s not in exclude]
+    if include:
+        symbols.extend(include)
+    return symbols
 
 
 def retrieve_upstream(start, end, symbols):
@@ -62,10 +79,10 @@ def collect_history(start, end, symbols):
     """Collect and store historical data."""
     data = retrieve_upstream(start, end, symbols)
     data = data.loc[:, "Close"]
-    Path(MOMENTUM_DIR).mkdir(parents=True, exist_ok=True)
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
     start = start.strftime("%Y%m%d")
     end = end.strftime("%Y%m%d")
-    filename = f"{MOMENTUM_DIR}/sp500-{start}-{end}.data"
+    filename = f"{DATA_DIR}/sp500-{start}-{end}.data"
     data.to_pickle(filename)
 
 
@@ -73,7 +90,7 @@ def get_historical_data_from_file(filename):
     """Get historical data from file."""
     try:
         return pd.read_pickle(filename)
-    except IOError:
+    except ValueError:
         msg = f"File {filename} not found, you may need to re-collect some data"
         click.echo(click.style(f"{msg}", fg="red"))
 
@@ -120,7 +137,9 @@ def can_we_trade(config, index_history):
     return bull_market
 
 
-def compute_portfolio(final_buy_list, vola_target_weights, config, liquidity, data):
+def compute_portfolio(
+    name, final_buy_list, vola_target_weights, config, liquidity, data, check
+):
     if not can_we_trade(config, data["SPY"]):
         click.echo(
             click.style(
@@ -167,10 +186,12 @@ def compute_portfolio(final_buy_list, vola_target_weights, config, liquidity, da
         portfolio.loc["TOTAL"].value + portfolio.loc["CASH"].value
     )
     # Store portfolio
-    portfolio.to_pickle(f"{MOMENTUM_DIR}/portfolio.last", protocol=4)
+    Path(PORTFOLIOS_DIR).mkdir(parents=True, exist_ok=True)
+    if not check:
+        portfolio.to_json(f"{PORTFOLIOS_DIR}/{name}.json", indent=4)
     print()
     click.echo(click.style("******* NEW PORTFOLIO *******", fg="green"))
-    print(portfolio.to_dense())
+    print(portfolio.to_markdown())
     print()
 
 
@@ -181,7 +202,7 @@ def calculate_averages(data):
     df.loc["TODAY", "value"] = data[-1]
     print()
     click.echo(click.style("******* SP500 SMAs *******", fg="green"))
-    print(df.to_dense())
+    print(df.to_markdown())
     print()
 
 
@@ -198,7 +219,7 @@ def sell_report(sell, data, portfolio):
 
     print()
     click.echo(click.style("******* SELL *******", fg="red"))
-    print(to_sell.to_dense())
+    print(to_sell.to_markdown())
     print()
 
 
@@ -211,12 +232,12 @@ def remaining_report(portfolio, cash, liquidity):
     portfolio_value = new_portfolio.loc["TOTAL"].value + liquidity + cash
     new_portfolio.loc["PORTFOLIO", "value"] = portfolio_value
     click.echo(click.style("******* REMAINING *******", fg="yellow"))
-    print(new_portfolio.to_dense())
+    print(new_portfolio.to_markdown())
     print()
 
 
-def rebalance_portfolio(universe, ranking_table, config, data):
-    existing_portfolio = pd.read_pickle(f"{MOMENTUM_DIR}/portfolio.last")
+def rebalance_portfolio(name, universe, exclude, ranking_table, config, data, check, too_volatile):
+    existing_portfolio = pd.read_json(f"{PORTFOLIOS_DIR}/{name}.json")
     ignore_cols = ["TOTAL", "CASH", "PORTFOLIO"]
     sell = []
     zeros = []
@@ -250,12 +271,24 @@ def rebalance_portfolio(universe, ranking_table, config, data):
             zeros.append(security)
 
     kept_positions = [k for k in existing_portfolio.index if k not in ignore_cols]
-    # Sell positions no longer wanted.
+    """
+    Sell Logic
+
+    First we check if any existing position should be sold.
+    * Sell if stock is no longer part of index.
+    * Sell if stock has too low momentum value.
+    * Sell if stock is lower 100MA
+    * Sell if stock not in top 100 stocks
+    """
     for security, values in existing_portfolio.iterrows():
         if security in ignore_cols:
             continue
-        sec_history = data[security][:100]
-        if security not in universe:
+        sec_history = data[security][-100:]
+        if security in exclude:
+            sell_security(security, values.amount)
+        elif security not in universe:
+            sell_security(security, values.amount)
+        elif security in too_volatile:
             sell_security(security, values.amount)
         elif ranking_table[security] < config["minimum_momentum"]:
             sell_security(security, values.amount)
@@ -264,6 +297,7 @@ def rebalance_portfolio(universe, ranking_table, config, data):
         elif security not in ranking_table[:50]:
             sell_security(security, values.amount)
         else:
+            # Hold it. Update portfolio with current price of the stock.
             existing_portfolio.loc[security]["price"] = data[security][-1]
             existing_portfolio.loc[security]["value"] = (
                 values.amount * data[security][-1]
@@ -272,6 +306,9 @@ def rebalance_portfolio(universe, ranking_table, config, data):
     sell_report(sell, data, existing_portfolio)
     cash = existing_portfolio.loc["CASH"].value
     new_portfolio = existing_portfolio.drop(sell).drop(zeros).drop(ignore_cols)
+    for ex in exclude:
+        if ex in ranking_table:
+            ranking_table = ranking_table.drop(ex)
     portfolio_value = cash + liquidity_from_sells + new_portfolio["value"].sum()
     remaining_report(new_portfolio, cash, liquidity_from_sells)
 
@@ -285,5 +322,5 @@ def rebalance_portfolio(universe, ranking_table, config, data):
     )
     vola_target_weights = get_weighted_table(data, final_buy_list, config)
     compute_portfolio(
-        final_buy_list, vola_target_weights, config, portfolio_value, data
+        name, final_buy_list, vola_target_weights, config, portfolio_value, data, check
     )

@@ -68,3 +68,5 @@ test/unit/test_devices.py
 report.json
 tags
 .pytest_cache/
+
+backtests/notebooks/.ipynb_checkpoints
